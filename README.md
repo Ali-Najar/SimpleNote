@@ -91,23 +91,3 @@ app/src/main/java/com/example/simplenote/
   ui/AppNav.kt          # Navigation graph (onboarding/login/register/home/editor/settings/change-pw)
 app/src/main/res/       # drawables, themes, strings
 ```
-
----
-
-## Troubleshooting
-
-**Emulator can’t reach backend**  
-- Use `http://10.0.2.2:8000/` (emulator → host).  
-- Ensure `android:usesCleartextTraffic="true"` for HTTP dev.  
-- Verify Docker exposes port `8000`.  
-- See OkHttp logs in Logcat (requests/responses).
-
-**Delete returns 404**  
-- Often wrong note id or missing auth. Check that access token is set and auto-refresh works.
-
-**New note saved but Home doesn’t update**  
-- Home refreshes on resume and after editor success. If needed, pull-to-refresh or re-open Home.
-
-**Registration 400**  
-- Backend validation (e.g., weak password or duplicate username/email). UI shows server message.
-
