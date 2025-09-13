@@ -111,7 +111,3 @@ app/src/main/res/       # drawables, themes, strings
 **Registration 400**  
 - Backend validation (e.g., weak password or duplicate username/email). UI shows server message.
 
----
-
-## License
-MIT (or your preferred license).
