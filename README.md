@@ -1,3 +1,9 @@
+# Developers
+
+Ali Najar 401102701
+
+Amirreza Inanloo 401105667
+
 # SimpleNote — Android (Kotlin, Jetpack Compose)
 
 A Kotlin Android app for your SimpleNote backend: onboarding → auth (register/login) → notes (search + pagination) → editor (create/edit/delete) → settings (profile, change password, logout). JWT auth with automatic **access token refresh**.
