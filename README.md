@@ -1,37 +1,71 @@
-# SimpleNote — Android (Kotlin) & iOS (SwiftUI)
+# SimpleNote — Android (Kotlin, Jetpack Compose)
 
-A tiny cross-platform notes app that talks to your SimpleNote backend.  
-Features: onboarding → auth (register/login) → notes list (search + pagination) → note editor (create/edit/delete) → settings (profile, change password, logout).  
-Auth is JWT with automatic **access token refresh**.
+A Kotlin Android app for your SimpleNote backend: onboarding → auth (register/login) → notes (search + pagination) → editor (create/edit/delete) → settings (profile, change password, logout). JWT auth with automatic **access token refresh**.
 
 ---
 
-## TL;DR
+## Prerequisites
+- Android Studio (Giraffe or newer)
+- JDK 11
+- Android SDK Platform 35 (target), minSdk 25
+- Backend running locally or accessible over the network
+  - Redoc & Postman import: `/api/schema/redoc/`
 
-1) **Run the backend** (Docker ok):
+---
+
+## Quick Start
+
+1) **Run backend** (example with Docker):
 ```bash
-# in the backend repo
 docker compose up --build
-# API docs:
-# http://localhost:8000/api/schema/redoc/
+# API docs: http://localhost:8000/api/schema/redoc/
 ```
 
-2) **Android (emulator):** set `API_BASE_URL = "http://10.0.2.2:8000/"` and run.
+2) **Set API base URL** for the Android emulator (maps host to `10.0.2.2`):
+`app/build.gradle.kts`
+```kotlin
+android {
+  defaultConfig {
+    buildConfigField("String", "API_BASE_URL", ""http://10.0.2.2:8000/"")
+  }
+  buildFeatures {
+    buildConfig = true
+    compose = true
+  }
+}
+```
 
-3) **iOS (simulator):** set `API_BASE_URL = http://127.0.0.1:8000/` and run (enable ATS for HTTP dev).
+> Physical device: use your machine’s LAN IP (e.g., `http://192.168.1.10:8000/`).  
+> Genymotion: `http://10.0.3.2:8000/`.
 
-4) Login or Register → create/edit/delete notes.
+3) **Allow HTTP during development** (if your backend is not HTTPS):
+`AndroidManifest.xml` inside `<application ...>`:
+```xml
+<application
+    android:usesCleartextTraffic="true"
+    ... >
+```
+
+4) **Sync & Run**: Sync Gradle and run on an emulator or device.
 
 ---
 
-## Backend (expected API)
+## Features
+- Onboarding with illustration
+- Register / Login (stores tokens)
+- **JWT**: OkHttp Interceptor adds `Authorization: Bearer <access>`; **Authenticator** refreshes access on 401
+- Notes list with search (`/api/notes/filter`) and infinite scroll
+- Create/Update/Delete notes
+- Settings: profile (`/api/auth/userinfo/`), change password, logout
+- Error messages surfaced from server (400/401/404/etc.)
 
-The app uses these endpoints (paths are relative to your base URL):
+---
 
+## API Endpoints (expected)
 - `POST /api/auth/register/` → `{ username, password, email, first_name?, last_name? }`
 - `POST /api/auth/token/` → `{ username, password }` ⇒ `{ access, refresh }`
 - `POST /api/auth/token/refresh/` → `{ refresh }` ⇒ `{ access }`
-- `GET  /api/auth/userinfo/` ⇒ `{ id, username, email, first_name?, last_name? }`
+- `GET  /api/auth/userinfo/`
 - `POST /api/auth/change-password/` → `{ old_password, new_password }`
 
 Notes:
@@ -42,199 +76,42 @@ Notes:
 - `PUT  /api/notes/{id}/` → `{ title, description }`
 - `DELETE /api/notes/{id}/`
 
-Redoc (with **Postman import**):
-```
-/api/schema/redoc/
-```
-
 ---
 
-## Android app (Kotlin + Jetpack Compose)
-
-### Requirements
-- Android Studio (Giraffe or newer)
-- JDK 11
-- minSdk 25 / targetSdk 35
-
-### Configure API base URL
-`app/build.gradle.kts`:
-```kotlin
-android {
-  defaultConfig {
-    // For Android emulator → your host machine:
-    buildConfigField("String", "API_BASE_URL", ""http://10.0.2.2:8000/"")
-  }
-  buildFeatures {
-    buildConfig = true
-    compose = true
-  }
-}
+## Project Layout (high level)
 ```
-
-> Genymotion: `http://10.0.3.2:8000/`  
-> Physical device: your computer’s LAN IP, e.g. `http://192.168.1.10:8000/`.
-
-### Allow HTTP during development
-`AndroidManifest.xml` inside `<application ...>`:
-```xml
-<application
-    android:usesCleartextTraffic="true"
-    ... >
+app/src/main/java/com/example/simplenote/
+  data/local/           # TokenStore (DataStore Preferences)
+  data/remote/          # ApiClient, AuthApi, NotesApi, TokenAuthenticator, DTOs
+  data/repo/            # NotesRepository
+  ui/auth/              # Login, Register, ChangePassword (+ ViewModels)
+  ui/home/              # Home (+ ViewModel) with paging & search
+  ui/note/              # Note editor (+ ViewModel)
+  ui/settings/          # Settings (+ ViewModel)
+  ui/AppNav.kt          # Navigation graph (onboarding/login/register/home/editor/settings/change-pw)
+app/src/main/res/       # drawables, themes, strings
 ```
-(Prefer HTTPS in production.)
-
-### Tech stack
-- **UI:** Jetpack Compose (Material 3, Navigation Compose, Foundation grid)
-- **Networking:** Retrofit + Kotlinx Serialization, OkHttp + logging
-- **Auth:** Interceptor adds `Authorization: Bearer <access>`; **Authenticator** refreshes access token on 401
-- **Storage:** DataStore Preferences for tokens
-- **State:** ViewModel + StateFlow
-- **Screens:** Onboarding, Login, Register, Home, NoteEditor, Settings, ChangePassword
-
-### Run
-- Open in Android Studio
-- **Sync Gradle**, then **Run** on an emulator or device
-
----
-
-## iOS app (SwiftUI)
-
-A complete SwiftUI implementation is included.
-
-### Requirements
-- Xcode 15+
-- iOS 16+ target
-
-### Configure API base URL
-`Config.swift`:
-```swift
-enum Config {
-    static let API_BASE_URL = URL(string: "http://127.0.0.1:8000/")! // Simulator + backend on your Mac
-}
-```
-> On device: use your Mac’s LAN IP, e.g. `http://192.168.1.10:8000/`.
-
-### Allow HTTP during development (ATS)
-**Info.plist**:
-```xml
-<key>NSAppTransportSecurity</key>
-<dict>
-  <key>NSAllowsArbitraryLoads</key>
-  <true/>
-</dict>
-```
-(Prefer HTTPS in production.)
-
-### Tech stack
-- **UI:** SwiftUI + NavigationStack
-- **Networking:** URLSession, Codable
-- **Auth:** Keychain stores access/refresh; auto-refresh on 401 and retry
-- **State:** ObservableObject VMs; `AppState` tracks login/session
-- **Screens:** Onboarding, Login, Register, Home (search + pagination), Editor, Settings, Change Password
-
-### Run
-- Open in Xcode → **Build & Run** on the simulator
-
----
-
-## Screens
-
-- **Onboarding** – centered illustration with “Create account” / “I already have an account”
-- **Login / Register** – validation + server error messages
-- **Home** – search (`/filter`), infinite scroll
-- **Editor** – create, edit, delete note
-- **Settings** – profile (`/userinfo/`), change password, logout
-- **Change Password** – client checks + server messages
 
 ---
 
 ## Troubleshooting
 
-**Android emulator can’t hit backend**
-- Use `http://10.0.2.2:8000/`
-- Allow cleartext traffic for dev
-- Check Logcat (OkHttp logs enabled)
+**Emulator can’t reach backend**  
+- Use `http://10.0.2.2:8000/` (emulator → host).  
+- Ensure `android:usesCleartextTraffic="true"` for HTTP dev.  
+- Verify Docker exposes port `8000`.  
+- See OkHttp logs in Logcat (requests/responses).
 
-**iOS simulator can’t hit backend**
-- Use `http://127.0.0.1:8000/`
-- Add ATS exception for HTTP dev
+**Delete returns 404**  
+- Often wrong note id or missing auth. Check that access token is set and auto-refresh works.
 
-**Delete returns 404**
-- Usually wrong note ID or request without auth (expired access).  
-  Access token should auto-refresh on 401; confirm refresh token exists.
+**New note saved but Home doesn’t update**  
+- Home refreshes on resume and after editor success. If needed, pull-to-refresh or re-open Home.
 
-**New note saved but Home doesn’t update**
-- Android: Home refreshes on return (onResume) and when editor signals success.
-- iOS: Home refreshes after dismissing the editor.
-
-**Registration fails (400)**
-- Weak password or duplicate username/email; UI surfaces server error details.
-
----
-
-## Project structure (high level)
-
-```
-/android-app
-  app/src/main/java/com/example/simplenote/
-    data/local/           # TokenStore (DataStore)
-    data/remote/          # ApiClient, interceptors, DTOs, retrofit APIs
-    data/repo/            # NotesRepository
-    ui/auth/              # Login/Register/ChangePassword
-    ui/home/              # Home
-    ui/note/              # Note editor
-    ui/settings/          # Settings
-    ui/AppNav.kt          # Navigation graph
-  app/src/main/res/       # drawables, themes, etc.
-
-/ios-app
-  Config.swift
-  APIClient.swift
-  Keychain.swift
-  DTOs.swift
-  ViewModels.swift
-  Views.swift
-  App.swift
-  Assets.xcassets/
-```
-
----
-
-## Development notes
-
-- **Logging (Android):** OkHttp `HttpLoggingInterceptor` shows request/response bodies in debug.
-- **Token refresh:**  
-  - Android: `TokenAuthenticator` calls `/api/auth/token/refresh/` then retries.  
-  - iOS: `APIClient` refreshes on 401 and retries the original request.
-- **Pagination:** both apps use `page`/`page_size` and keep fetching until `next == null`.
-
----
-
-## Roadmap / TODOs
-
-- Offline-first (local DB + sync)  
-- Unit/UI tests  
-- Theming and design polish (match Figma exactly)  
-- Persist “seen onboarding” across launches  
-- CI (lint, build, tests)
-
----
-
-## Contributing
-
-PRs and issues welcome. Please include:
-- clear description,
-- repro steps / screen recordings,
-- backend logs for API issues.
+**Registration 400**  
+- Backend validation (e.g., weak password or duplicate username/email). UI shows server message.
 
 ---
 
 ## License
-
-MIT (or your preferred license). Add a `LICENSE` file in the repo root.
-
----
-
-### Credits
-- Backend by you (SimpleNote).  
-- Design cues from your Figma (onboarding/login/register/home/editor/settings).
+MIT (or your preferred license).
